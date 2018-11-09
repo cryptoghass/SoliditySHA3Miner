@@ -14,9 +14,9 @@ namespace CPUSolver
 		std::memcpy((void *)solutionTemplate, newTemplateStr, UINT256_LENGTH * 2 + 2);
 	}
 
-	void Keccak256(byte32_t *message, byte32_t *digest)
+	void SHA3(byte32_t *message, byte32_t *digest)
 	{
-		cpuSolver::Keccak256(message, digest);
+		cpuSolver::SHA3(message, digest);
 	}
 
 	GetKingAddressCallback SetOnGetKingAddressHandler(cpuSolver *instance, GetKingAddressCallback getKingAddressCallback)

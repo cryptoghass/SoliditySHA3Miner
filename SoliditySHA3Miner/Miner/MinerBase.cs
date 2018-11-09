@@ -470,7 +470,7 @@ namespace SoliditySHA3Miner.Miner
                         Array.ConstrainedCopy(m_AddressBytes, 0, messageBytes, UINT256_LENGTH, ADDRESS_LENGTH);
                         Array.ConstrainedCopy(nonceByte, 0, messageBytes, UINT256_LENGTH + ADDRESS_LENGTH, UINT256_LENGTH);
 
-                        Helper.CPU.Solver.Keccak256(messagePointer, digestPointer);
+                        Helper.CPU.Solver.SHA3(messagePointer, digestPointer);
                         messageHandle.Free();
                         digestHandle.Free();
 

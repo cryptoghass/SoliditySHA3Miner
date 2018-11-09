@@ -13,7 +13,7 @@ namespace SoliditySHA3Miner.Miner.Helper
             public const string SOLVER_NAME = "CPUSoliditySHA3Solver";
 
             [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void Keccak256(IntPtr message, IntPtr digest);
+            public static extern void SHA3(IntPtr message, IntPtr digest);
         }
 
         #endregion
