@@ -1,8 +1,6 @@
 #include "cpuSolver.h"
 #include "sha3.h"
 
-#define ROTL64(x, y) (((x) << (y)) ^ ((x) >> (64u - (y))))
-
 namespace CPUSolver
 {
 	// --------------------------------------------------------------------
