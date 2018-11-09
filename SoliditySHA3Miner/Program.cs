@@ -51,15 +51,18 @@ namespace SoliditySHA3Miner
 
             lock (m_handler)
             {
-                if (m_allMiners != null)
-                    m_allMiners.AsParallel()
-                                .ForAll(miner =>
-                                {
-                                    try { if (miner != null) miner.Dispose(); }
-                                    catch (Exception ex) { Print(ex.Message); }
-                                });
+                try
+                {
+                    if (m_allMiners != null)
+                    {
+                        Task.WaitAll(m_allMiners.Select(m => Task.Factory.StartNew(() => m.StopMining())).ToArray());
+                        Task.WaitAll(m_allMiners.Select(m => Task.Factory.StartNew(() => m.Dispose())).ToArray());
+                    }
 
-                if (m_waitCheckTimer != null) m_waitCheckTimer.Stop();
+                    if (m_waitCheckTimer != null) m_waitCheckTimer.Stop();
+                }
+                catch { }
+
                 if (m_manualResetEvent != null) m_manualResetEvent.Set();
 
                 return true;
@@ -128,7 +131,7 @@ namespace SoliditySHA3Miner
 
                 Console.WriteLine(message);
 
-                if (message.Contains("Kernel launch failed") || message.Contains("Stop mining"))
+                if (message.Contains("Kernel launch failed"))
                 {
                     Task.Delay(5000);
                     Environment.Exit(22);
@@ -314,7 +317,7 @@ namespace SoliditySHA3Miner
                 m_waitCheckTimer.Elapsed +=
                     delegate
                     {
-                        if (m_allMiners.All(m => m != null && (!m.IsMining || m.IsPaused))) WaitSeconds++;
+                        if (m_allMiners.All(m => m != null && (!m.IsMining || m.IsPause))) WaitSeconds++;
                     };
                 m_waitCheckTimer.Start();
                 WaitSeconds = (ulong)(LaunchTime - DateTime.Now).TotalSeconds;
@@ -329,12 +332,13 @@ namespace SoliditySHA3Miner
             }
 
             m_manualResetEvent.WaitOne();
-            Console.WriteLine("[INFO] Exiting application...");
 
-            API.Ccminer.StopListening();
             m_waitCheckTimer.Stop();
+            m_apiJson.Stop();
+            m_apiJson.Dispose();
+            API.Ccminer.StopListening();
 
-            Environment.Exit(0);
+            Console.WriteLine("[INFO] Exiting application...");
         }
     }
 }

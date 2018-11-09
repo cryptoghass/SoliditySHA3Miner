@@ -4,24 +4,14 @@
 #include <chrono>
 #include <memory>
 #include <random>
-#include <set>
 #include <thread>
-#include "sha3.h"
-#include "device/device.h"
-#include "uint256/arith_uint256.h"
+#include <device_launch_parameters.h>
+#include "device/nv_api.h"
+#include "device/instance.h"
 
 // --------------------------------------------------------------------
 // CUDA common constants
 // --------------------------------------------------------------------
-
-#ifdef __INTELLISENSE__
-	//	reduce vstudio warnings (__byteperm, blockIdx...)
-#	include <device_functions.h>
-#	include <device_launch_parameters.h>
-#endif //__INTELLISENSE__
-
-#define MAX_SOLUTION_COUNT_DEVICE			4
-#define NONCE_POSITION						UINT256_LENGTH + ADDRESS_LENGTH + ADDRESS_LENGTH
 
 __constant__ static uint64_t const Keccak_f1600_RC[24] =
 {
@@ -37,119 +27,65 @@ __constant__ static uint64_t const Keccak_f1600_RC[24] =
 
 namespace CUDASolver
 {
-	typedef void(*GetKingAddressCallback)(uint8_t *kingAddress);
-	typedef void(*GetSolutionTemplateCallback)(uint8_t *solutionTemplate);
-	typedef void(*GetWorkPositionCallback)(uint64_t &lastWorkPosition);
-	typedef void(*ResetWorkPositionCallback)(uint64_t &lastWorkPosition);
-	typedef void(*IncrementWorkPositionCallback)(uint64_t &lastWorkPosition, uint64_t incrementSize);
 	typedef void(*MessageCallback)(int deviceID, const char *type, const char *message);
-	typedef void(*SolutionCallback)(const char *digest, const char *address, const char *challenge, const char *target, const char *solution);
 
 	class CudaSolver
 	{
 	public:
-		GetKingAddressCallback m_getKingAddressCallback;
-		GetSolutionTemplateCallback m_getSolutionTemplateCallback;
-		GetWorkPositionCallback m_getWorkPositionCallback;
-		ResetWorkPositionCallback m_resetWorkPositionCallback;
-		IncrementWorkPositionCallback m_incrementWorkPositionCallback;
 		MessageCallback m_messageCallback;
-		SolutionCallback m_solutionCallback;
 
 		bool isSubmitStale;
 
 	private:
-		std::vector<std::unique_ptr<Device>> m_devices;
-		std::thread m_runThread;
-
-		static bool m_pause;
-		static bool m_isSubmitting;
-		static bool m_isKingMaking;
-
-		std::string s_address;
-		std::string s_challenge;
-		std::string s_target;
-
-		address_t m_address;
-		address_t m_kingAddress;
-		byte32_t m_solutionTemplate;
-		message_ut m_miningMessage;
-		arith_uint256 m_target;
+		std::vector<std::unique_ptr<Device::Instance>> m_deviceInstances;
 
 	public:
-		static bool foundNvAPI64();
+		static bool FoundNvAPI64();
 
-		static std::string getCudaErrorString(cudaError_t &error);
-		static int getDeviceCount(std::string &errorMessage);
-		static void getDeviceCount(int *deviceCount, const char *errorMessage, uint64_t *errorSize);
-		static std::string getDeviceName(int deviceID, std::string &errorMessage);
-		static void getDeviceName(int deviceID, const char *deviceName, uint64_t *nameSize, const char *errorMessage, uint64_t *errorSize);
+		static void GetDeviceCount(int *deviceCount, const char *errorMessage);
 
-		// require web3 contract getMethod -> _MAXIMUM_TARGET
+		static void GetDeviceName(int deviceID, const char *deviceName, const char *errorMessage);
+
 		CudaSolver() noexcept;
 		~CudaSolver() noexcept;
 
-		void setGetKingAddressCallback(GetKingAddressCallback kingAddressCallback);
-		void setGetSolutionTemplateCallback(GetSolutionTemplateCallback solutionTemplateCallback);
-		void setGetWorkPositionCallback(GetWorkPositionCallback workPositionCallback);
-		void setResetWorkPositionCallback(ResetWorkPositionCallback resetWorkPositionCallback);
-		void setIncrementWorkPositionCallback(IncrementWorkPositionCallback incrementWorkPositionCallback);
-		void setMessageCallback(MessageCallback messageCallback);
-		void setSolutionCallback(SolutionCallback solutionCallback);
+		void GetDeviceProperties(int deviceID, uint32_t *pciBusID, const char *deviceName,
+									int *computeMajor, int *computeMinor, const char *errorMessage);
 
-		bool assignDevice(int const deviceID, uint32_t &pciBusID, float &intensity);
-		bool isAssigned();
-		bool isAnyInitialised();
-		bool isMining();
-		bool isPaused();
+		void InitializeDevice(int deviceID, uint32_t pciBusID, uint32_t maxSolutionCount,
+								uint64_t **solutions, uint32_t **solutionCount,
+								uint64_t **solutionsDevice, uint32_t **solutionCountDevice,
+								const char *errorMessage);
 
-		void updatePrefix(std::string const prefix);
-		void updateTarget(std::string const target);
+		void SetDevice(int deviceID, const char *errorMessage);
+		void ResetDevice(int deviceID, const char *errorMessage);
+		void FreeObject(int deviceID, void *object, const char *errorMessage);
 
-		void startFinding();
-		void stopFinding();
-		void pauseFinding(bool pauseFinding);
+		void PushHigh64Target(uint64_t *high64Target, const char *errorMessage);
+		void PushMidState(sponge_ut *midState, const char *errorMessage);
+		void PushTarget(byte32_t *target, const char *errorMessage);
+		void PushMessage(message_ut *message, const char *errorMessage);
 
-		uint64_t getTotalHashRate();
-		uint64_t getHashRateByDeviceID(int const deviceID);
+		void HashMidState(dim3 *grid, dim3 *block,
+							uint64_t *solutionsDevice, uint32_t *solutionCountDevice,
+							uint32_t *maxSolutionCount, uint64_t *workPosition, const char *errorMessage);
 
-		int getDeviceSettingMaxCoreClock(int deviceID);
-		int getDeviceSettingMaxMemoryClock(int deviceID);
-		int getDeviceSettingPowerLimit(int deviceID);
-		int getDeviceSettingThermalLimit(int deviceID);
-		int getDeviceSettingFanLevelPercent(int deviceID);
+		void HashMessage(dim3 *grid, dim3 *block,
+							uint64_t *solutionsDevice, uint32_t *solutionCountDevice,
+							uint32_t *maxSolutionCount, uint64_t *workPosition, const char *errorMessage);
 
-		int getDeviceCurrentFanTachometerRPM(int deviceID);
-		int getDeviceCurrentTemperature(int deviceID);
-		int getDeviceCurrentCoreClock(int deviceID);
-		int getDeviceCurrentMemoryClock(int deviceID);
-		int getDeviceCurrentUtilizationPercent(int deviceID);
-		int getDeviceCurrentPstate(int deviceID);
-		std::string getDeviceCurrentThrottleReasons(int deviceID);
+		int GetDeviceSettingMaxCoreClock(int deviceID);
+		int GetDeviceSettingMaxMemoryClock(int deviceID);
+		int GetDeviceSettingPowerLimit(int deviceID);
+		int GetDeviceSettingThermalLimit(int deviceID);
+		int GetDeviceSettingFanLevelPercent(int deviceID);
 
-	private:
-		void initializeDevice(std::unique_ptr<Device> &device);
-		bool isAddressEmpty(address_t &address);
-		void getKingAddress(address_t *kingAddress);
-		void getSolutionTemplate(byte32_t *solutionTemplate);
-		void getWorkPosition(uint64_t &workPosition);
-		void resetWorkPosition(uint64_t &lastPosition);
-		void incrementWorkPosition(uint64_t &lastPosition, uint64_t increment);
-		void onMessage(int deviceID, const char *type, const char *message);
-		void onMessage(int deviceID, std::string type, std::string message);
-
-		void onSolution(byte32_t const solution, std::string challenge, std::unique_ptr<Device> &device);
-
-		void findSolution(int const deviceID);
-		void findSolutionKing(int const deviceID);
-		void checkInputs(std::unique_ptr<Device> &device, char *currentChallenge);
-		void pushTarget(std::unique_ptr<Device> &device);
-		void pushTargetKing(std::unique_ptr<Device> &device);
-		void pushMessage(std::unique_ptr<Device> &device);
-		void pushMessageKing(std::unique_ptr<Device> &device);
-		void submitSolutions(std::set<uint64_t> solutions, std::string challenge, int const deviceID);
-
-		uint64_t getNextWorkPosition(std::unique_ptr<Device> &device);
-		sponge_ut const getMidState(message_ut &newMessage);
+		int GetDeviceCurrentFanTachometerRPM(int deviceID);
+		int GetDeviceCurrentTemperature(int deviceID);
+		int GetDeviceCurrentCoreClock(int deviceID);
+		int GetDeviceCurrentMemoryClock(int deviceID);
+		int GetDeviceCurrentUtilizationPercent(int deviceID);
+		int GetDeviceCurrentPstate(int deviceID);
+		std::string GetDeviceCurrentThrottleReasons(int deviceID);
 	};
 }

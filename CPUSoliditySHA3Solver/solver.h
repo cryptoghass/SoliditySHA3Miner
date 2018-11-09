@@ -21,6 +21,8 @@ namespace CPUSolver
 
 		EXPORT void __CDECL__ GetNewSolutionTemplate(const char *kingAddress, const char *solutionTemplate);
 
+		EXPORT void __CDECL__ Keccak256(byte32_t *message, byte32_t *digest);
+
 		EXPORT cpuSolver *__CDECL__ GetInstance(const char *threads) noexcept;
 
 		EXPORT void __CDECL__ DisposeInstance(cpuSolver *instance) noexcept;

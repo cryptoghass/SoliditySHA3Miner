@@ -113,7 +113,7 @@ namespace SoliditySHA3Miner.Miner
 
         public static string GetNewSolutionTemplate(string kingAddress = "")
         {
-            var solutionTemplate = new StringBuilder(32 * 2 + 2);
+            var solutionTemplate = new StringBuilder(MinerBase.UINT256_LENGTH * 2 + 2);
             Solver.GetNewSolutionTemplate(new StringBuilder(kingAddress), solutionTemplate);
             return solutionTemplate.ToString();
         }
@@ -152,7 +152,7 @@ namespace SoliditySHA3Miner.Miner
             }
         }
 
-        public bool IsPaused
+        public bool IsPause
         {
             get
             {
@@ -188,7 +188,7 @@ namespace SoliditySHA3Miner.Miner
 
         public ulong GetHashrateByDevice(string platformName, int deviceID)
         {
-            if (IsPaused) return 0ul;
+            if (IsPause) return 0ul;
 
             var hashrate = 0ul;
 
@@ -200,7 +200,7 @@ namespace SoliditySHA3Miner.Miner
 
         public ulong GetTotalHashrate()
         {
-            if (IsPaused) return 0ul;
+            if (IsPause) return 0ul;
 
             var hashrate = 0ul;
 
@@ -281,7 +281,7 @@ namespace SoliditySHA3Miner.Miner
                 m_SolutionCallback = Solver.SetOnSolutionHandler(m_instance, m_instance_OnSolution);
 
                 NetworkInterface.OnGetMiningParameterStatus += NetworkInterface_OnGetMiningParameterStatus;
-                NetworkInterface.OnNewMessagePrefix += NetworkInterface_OnNewMessagePrefix;
+                NetworkInterface.OnNewChallenge += NetworkInterface_OnNewMessagePrefix;
                 NetworkInterface.OnNewTarget += NetworkInterface_OnNewTarget;
                 networkInterface.OnStopSolvingCurrentChallenge += NetworkInterface_OnStopSolvingCurrentChallenge;
 
@@ -307,7 +307,7 @@ namespace SoliditySHA3Miner.Miner
 
             for (uint threadID = 0; threadID < Devices.Count(d => d.AllowDevice); threadID++)
             {
-                if (IsPaused) hashrate = 0ul;
+                if (IsPause) hashrate = 0ul;
                 else
                     Solver.GetHashRateByThreadID(m_instance, threadID, ref hashrate);
 
@@ -315,7 +315,7 @@ namespace SoliditySHA3Miner.Miner
             }
             Program.Print(hashString.ToString());
 
-            if (IsPaused)
+            if (IsPause)
                 hashrate = 0ul;
             else
                 Solver.GetTotalHashRate(m_instance, ref hashrate);
@@ -358,7 +358,7 @@ namespace SoliditySHA3Miner.Miner
                 : string.Format(sFormat.ToString(), message.ToString()));
         }
 
-        private void NetworkInterface_OnStopSolvingCurrentChallenge(NetworkInterface.INetworkInterface sender, string currentTarget)
+        private void NetworkInterface_OnStopSolvingCurrentChallenge(NetworkInterface.INetworkInterface sender)
         {
             m_isCurrentChallengeStopSolving = true;
             Solver.PauseFinding(m_instance, true);
@@ -399,7 +399,7 @@ namespace SoliditySHA3Miner.Miner
 
         private void NetworkInterface_OnGetTotalHashrate(NetworkInterface.INetworkInterface sender, ref ulong totalHashrate)
         {
-            if (IsPaused) return;
+            if (IsPause) return;
             try
             {
                 var hashrate = 0ul;
@@ -413,8 +413,7 @@ namespace SoliditySHA3Miner.Miner
             }
         }
 
-        private void NetworkInterface_OnGetMiningParameterStatus(NetworkInterface.INetworkInterface sender,
-                                                                 bool success, NetworkInterface.MiningParameters miningParameters)
+        private void NetworkInterface_OnGetMiningParameterStatus(NetworkInterface.INetworkInterface sender, bool success)
         {
             try
             {

@@ -157,7 +157,7 @@ __device__ __forceinline__ static bool islessThan(uint8_t *left, uint8_t *right)
 	return false;
 }
 
-__global__ void hashMessage(uint64_t *__restrict__ solutions, uint32_t *__restrict__ solutionCount, uint64_t const startPosition)
+__global__ void hashMessage(uint64_t *__restrict__ solutions, uint32_t *__restrict__ solutionCount, uint32_t maxSolutionCount, uint64_t startPosition)
 {
 	uint8_t digest[UINT256_LENGTH];
 	uint8_t message[MESSAGE_LENGTH];
@@ -171,111 +171,35 @@ __global__ void hashMessage(uint64_t *__restrict__ solutions, uint32_t *__restri
 
 	if (islessThan(digest, d_target))
 	{
-		(*solutionCount)++;
-		if ((*solutionCount) < MAX_SOLUTION_COUNT_DEVICE) solutions[(*solutionCount) - 1] = nonce.uint64;
+		if (*solutionCount < maxSolutionCount)
+		{
+			solutions[*solutionCount] = nonce.uint64;
+			(*solutionCount)++;
+		}
 	}
 }
 
 // --------------------------------------------------------------------
 // CudaSolver
 // --------------------------------------------------------------------
+
 namespace CUDASolver
 {
-	void CudaSolver::pushMessageKing(std::unique_ptr<Device>& device)
+	void CudaSolver::PushTarget(byte32_t *target, const char *errorMessage)
 	{
-		cudaMemcpyToSymbol(d_message, &device->currentMessage.byteArray, MESSAGE_LENGTH, 0, cudaMemcpyHostToDevice);
-
-		device->isNewMessage = false;
+		CudaCheckError(cudaMemcpyToSymbol(d_target, target, UINT256_LENGTH, 0, cudaMemcpyHostToDevice), errorMessage);
 	}
 
-	void CudaSolver::pushTargetKing(std::unique_ptr<Device>& device)
+	void CudaSolver::PushMessage(message_ut *message, const char *errorMessage)
 	{
-		cudaMemcpyToSymbol(d_target, &device->currentTarget, UINT256_LENGTH, 0, cudaMemcpyHostToDevice);
-
-		device->isNewTarget = false;
+		CudaCheckError(cudaMemcpyToSymbol(d_message, message, MESSAGE_LENGTH, 0, cudaMemcpyHostToDevice), errorMessage);
 	}
 
-	void CudaSolver::findSolutionKing(int const deviceID)
+	void CudaSolver::HashMessage(dim3 *grid, dim3 *block,
+									uint64_t *solutionsDevice, uint32_t *solutionCountDevice,
+									uint32_t *maxSolutionCount, uint64_t *workPosition, const char *errorMessage)
 	{
-		std::string errorMessage;
-		auto& device = *std::find_if(m_devices.begin(), m_devices.end(), [&](std::unique_ptr<Device>& device) { return device->deviceID == deviceID; });
-
-		if (!device->initialized) return;
-
-		while (!(device->isNewTarget || device->isNewMessage)) { std::this_thread::sleep_for(std::chrono::milliseconds(200)); }
-
-		errorMessage = CudaSafeCall(cudaSetDevice(device->deviceID));
-		if (!errorMessage.empty())
-			onMessage(device->deviceID, "Error", errorMessage);
-
-		char *c_currentChallenge = (char *)malloc(s_challenge.size());
-		#ifdef __linux__
-		strcpy(c_currentChallenge, s_challenge.c_str());
-		#else
-		strcpy_s(c_currentChallenge, s_challenge.size() + 1, s_challenge.c_str());
-		#endif
-
-		onMessage(device->deviceID, "Info", "Start mining...");
-		onMessage(device->deviceID, "Debug", "Threads: " + std::to_string(device->threads()) + " Grid size: " + std::to_string(device->grid().x) + " Block size:" + std::to_string(device->block().x));
-
-		device->mining = true;
-		device->hashCount.store(0ull);
-		device->hashStartTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(500); // reduce excessive high hashrate reporting at start
-		do
-		{
-			while (m_pause)
-			{
-				device->hashCount.store(0ull);
-				device->hashStartTime = std::chrono::steady_clock::now();
-
-				std::this_thread::sleep_for(std::chrono::milliseconds(500));
-			}
-
-			checkInputs(device, c_currentChallenge);
-
-			hashMessage<<<device->grid(), device->block()>>>(device->d_Solutions, device->d_SolutionCount, getNextWorkPosition(device));
-
-			errorMessage = CudaSyncAndCheckError();
-			if (!errorMessage.empty())
-			{
-				onMessage(device->deviceID, "Error", "Kernel launch failed: " + errorMessage);
-				device->mining = false;
-				break;
-			}
-
-			if (*device->h_SolutionCount > 0u)
-			{
-				std::set<uint64_t> uniqueSolutions;
-
-				for (uint32_t i{ 0u }; i < MAX_SOLUTION_COUNT_DEVICE && i < *device->h_SolutionCount; ++i)
-				{
-					uint64_t const tempSolution{ device->h_Solutions[i] };
-
-					if (tempSolution != 0u && uniqueSolutions.find(tempSolution) == uniqueSolutions.end())
-						uniqueSolutions.emplace(tempSolution);
-				}
-
-				std::thread t{ &CudaSolver::submitSolutions, this, uniqueSolutions, std::string{ c_currentChallenge }, device->deviceID };
-				t.detach();
-
-				std::memset(device->h_SolutionCount, 0u, UINT32_LENGTH);
-			}
-		} while (device->mining);
-
-		onMessage(device->deviceID, "Info", "Stop mining...");
-		device->hashCount.store(0ull);
-
-		errorMessage = CudaSafeCall(cudaFreeHost(device->h_SolutionCount));
-		if (!errorMessage.empty())
-			onMessage(device->deviceID, "Error", errorMessage);
-		errorMessage = CudaSafeCall(cudaFreeHost(device->h_Solutions));
-		if (!errorMessage.empty())
-			onMessage(device->deviceID, "Error", errorMessage);
-		errorMessage = CudaSafeCall(cudaDeviceReset());
-		if (!errorMessage.empty())
-			onMessage(device->deviceID, "Error", errorMessage);
-
-		device->initialized = false;
-		onMessage(device->deviceID, "Info", "Mining stopped.");
+		hashMessage<<<*grid, *block>>>(solutionsDevice, solutionCountDevice, *maxSolutionCount, *workPosition);
+		CudaSyncAndCheckError(errorMessage);
 	}
 }

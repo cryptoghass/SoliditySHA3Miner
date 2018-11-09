@@ -1,459 +1,87 @@
 ﻿using System;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace SoliditySHA3Miner.Miner
 {
-    public class CUDA : IMiner
+    public class CUDA : MinerBase
     {
-        #region P/Invoke interface
-
-        public static class Solver
-        {
-            public const string SOLVER_NAME = "CudaSoliditySHA3Solver";
-
-            public unsafe delegate void GetSolutionTemplateCallback(byte* solutionTemplate);
-
-            public unsafe delegate void GetKingAddressCallback(byte* kingAddress);
-
-            public delegate void GetWorkPositionCallback(ref ulong lastWorkPosition);
-
-            public delegate void ResetWorkPositionCallback(ref ulong lastWorkPosition);
-
-            public delegate void IncrementWorkPositionCallback(ref ulong lastWorkPosition, ulong incrementSize);
-
-            public delegate void MessageCallback([In]int deviceID, [In]StringBuilder type, [In]StringBuilder message);
-
-            public delegate void SolutionCallback([In]StringBuilder digest, [In]StringBuilder address, [In]StringBuilder challenge, [In]StringBuilder target, [In]StringBuilder solution);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void FoundNvAPI64(ref bool hasNvAPI64);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCount(ref int deviceCount, StringBuilder errorMessage, ref ulong errorSize);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceName(int deviceID, StringBuilder deviceName, ref ulong nameSize, StringBuilder errorMessage, ref ulong errorSize);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern IntPtr GetInstance();
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void DisposeInstance(IntPtr instance);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static unsafe extern GetSolutionTemplateCallback SetOnGetSolutionTemplateHandler(IntPtr instance, GetSolutionTemplateCallback getSolutionTemplateCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static unsafe extern GetKingAddressCallback SetOnGetKingAddressHandler(IntPtr instance, GetKingAddressCallback getKingAddressCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern GetWorkPositionCallback SetOnGetWorkPositionHandler(IntPtr instance, GetWorkPositionCallback getWorkPositionCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern ResetWorkPositionCallback SetOnResetWorkPositionHandler(IntPtr instance, ResetWorkPositionCallback resetWorkPositionCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern IncrementWorkPositionCallback SetOnIncrementWorkPositionHandler(IntPtr instance, IncrementWorkPositionCallback incrementWorkPositionCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern MessageCallback SetOnMessageHandler(IntPtr instance, MessageCallback messageCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern SolutionCallback SetOnSolutionHandler(IntPtr instance, SolutionCallback solutionCallback);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void SetSubmitStale(IntPtr instance, bool submitStale);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void AssignDevice(IntPtr instance, int deviceID, ref uint pciBusID, ref float intensity);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void IsAssigned(IntPtr instance, ref bool isAssigned);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void IsAnyInitialised(IntPtr instance, ref bool isAnyInitialised);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void IsMining(IntPtr instance, ref bool isMining);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void IsPaused(IntPtr instance, ref bool isPaused);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetHashRateByDeviceID(IntPtr instance, uint deviceID, ref ulong hashRate);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetTotalHashRate(IntPtr instance, ref ulong totalHashRate);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void UpdatePrefix(IntPtr instance, StringBuilder prefix);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void UpdateTarget(IntPtr instance, StringBuilder target);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void PauseFinding(IntPtr instance, bool pause);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void StartFinding(IntPtr instance);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void StopFinding(IntPtr instance);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceSettingMaxCoreClock(IntPtr instance, int deviceID, ref int coreClock);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceSettingMaxMemoryClock(IntPtr instance, int deviceID, ref int memoryClock);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceSettingPowerLimit(IntPtr instance, int deviceID, ref int powerLimit);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceSettingThermalLimit(IntPtr instance, int deviceID, ref int thermalLimit);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceSettingFanLevelPercent(IntPtr instance, int deviceID, ref int fanLevel);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentFanTachometerRPM(IntPtr instance, int deviceID, ref int tachometerRPM);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentTemperature(IntPtr instance, int deviceID, ref int temperature);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentCoreClock(IntPtr instance, int deviceID, ref int coreClock);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentMemoryClock(IntPtr instance, int deviceID, ref int memoryClock);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentUtilizationPercent(IntPtr instance, int deviceID, ref int utilization);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentPstate(IntPtr instance, int deviceID, ref int pState);
-
-            [DllImport(SOLVER_NAME, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern void GetDeviceCurrentThrottleReasons(IntPtr instance, int deviceID, StringBuilder throttleReasons, ref ulong reasonSize);
-        }
-
-        private Solver.GetSolutionTemplateCallback m_GetSolutionTemplateCallback;
-        private Solver.GetKingAddressCallback m_GetKingAddressCallback;
-        private Solver.GetWorkPositionCallback m_GetWorkPositionCallback;
-        private Solver.ResetWorkPositionCallback m_ResetWorkPositionCallback;
-        private Solver.IncrementWorkPositionCallback m_IncrementWorkPositionCallback;
-        private Solver.MessageCallback m_MessageCallback;
-        private Solver.SolutionCallback m_SolutionCallback;
-
-        #endregion P/Invoke interface
-
-        #region Static
-
-        public static int GetDeviceCount(out string errorMessage)
-        {
-            errorMessage = string.Empty;
-            var errMsg = new StringBuilder(1024);
-            var deviceCount = 0;
-            var errSize = 0ul;
-
-            Solver.GetDeviceCount(ref deviceCount, errMsg, ref errSize);
-
-            errorMessage = errMsg.ToString();
-            return deviceCount;
-        }
-
-        public static string GetDeviceName(int deviceID, out string errorMessage)
-        {
-            errorMessage = string.Empty;
-            var errMsg = new StringBuilder(1024);
-            var deviceName = new StringBuilder(256);
-            ulong nameSize = 0, errSize = 0;
-
-            Solver.GetDeviceName(deviceID, deviceName, ref nameSize, errMsg, ref errSize);
-
-            errorMessage = errMsg.ToString();
-            return deviceName.ToString();
-        }
-
-        public static string GetDevices(out string errorMessage)
-        {
-            errorMessage = string.Empty;
-            var errMsg = new StringBuilder(1024);
-            var deviceName = new StringBuilder(256);
-            var devicesString = new StringBuilder();
-            ulong nameSize = 0, errSize = 0;
-            var cudaCount = 0;
-
-            Solver.GetDeviceCount(ref cudaCount, errMsg, ref errSize);
-            errorMessage = errMsg.ToString();
-
-            if (!string.IsNullOrEmpty(errorMessage)) return string.Empty;
-
-            for (int i = 0; i < cudaCount; i++)
-            {
-                errMsg.Clear();
-                deviceName.Clear();
-
-                Solver.GetDeviceName(i, deviceName, ref nameSize, errMsg, ref errSize);
-                errorMessage = errMsg.ToString();
-
-                if (!string.IsNullOrEmpty(errorMessage)) return string.Empty;
-
-                devicesString.AppendLine(string.Format("{0}: {1}", i, deviceName.ToString()));
-            }
-            return devicesString.ToString();
-        }
-
-        #endregion Static
-
-        private Timer m_hashPrintTimer;
-        private int m_pauseOnFailedScan;
-        private int m_failedScanCount;
-        private bool m_isCurrentChallengeStopSolving;
-
-        public readonly IntPtr m_instance;
-
-        #region IMiner
-
-        public NetworkInterface.INetworkInterface NetworkInterface { get; }
-
-        public Device[] Devices { get; }
-
-        public bool HasAssignedDevices
-        {
-            get
-            {
-                var isAssigned = false;
-
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.IsAssigned(m_instance, ref isAssigned);
-
-                return isAssigned;
-            }
-        }
-
-        public bool HasMonitoringAPI { get; private set; }
-
-        public bool UseNvSMI { get; private set; }
-
-        public bool IsAnyInitialised
-        {
-            get
-            {
-                var isAnyInitialised = false;
-
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.IsAnyInitialised(m_instance, ref isAnyInitialised);
-
-                return isAnyInitialised;
-            }
-        }
-
-        public bool IsMining
-        {
-            get
-            {
-                var isMining = false;
-
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.IsMining(m_instance, ref isMining);
-
-                return isMining;
-            }
-        }
-
-        public bool IsPaused
-        {
-            get
-            {
-                var isPaused = false;
-
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.IsPaused(m_instance, ref isPaused);
-
-                return isPaused;
-            }
-        }
-
-        public void StartMining(int networkUpdateInterval, int hashratePrintInterval)
-        {
-            try
-            {
-                NetworkInterface.UpdateMiningParameters();
-
-                m_hashPrintTimer = new Timer(hashratePrintInterval);
-                m_hashPrintTimer.Elapsed += m_hashPrintTimer_Elapsed;
-                m_hashPrintTimer.Start();
-
-                NetworkInterface.ResetEffectiveHashrate();
-                Solver.StartFinding(m_instance);
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
-                StopMining();
-            }
-        }
-
-        public void StopMining()
-        {
-            try
-            {
-                m_hashPrintTimer.Stop();
-
-                NetworkInterface.ResetEffectiveHashrate();
-
-                Solver.StopFinding(m_instance);
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
-            }
-        }
-
-        public ulong GetHashrateByDevice(string platformName, int deviceID)
-        {
-            if (IsPaused) return 0ul;
-
-            var hashrate = 0ul;
-
-            if (m_instance != null && m_instance.ToInt64() != 0)
-                Solver.GetHashRateByDeviceID(m_instance, (uint)deviceID, ref hashrate);
-
-            return hashrate;
-        }
-
-        public ulong GetTotalHashrate()
-        {
-            if (IsPaused) return 0ul;
-
-            var hashrate = 0ul;
-
-            if (m_instance != null && m_instance.ToInt64() != 0)
-                Solver.GetTotalHashRate(m_instance, ref hashrate);
-
-            return hashrate;
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.DisposeInstance(m_instance);
-
-                m_GetSolutionTemplateCallback = null;
-                m_GetKingAddressCallback = null;
-                m_GetWorkPositionCallback = null;
-                m_ResetWorkPositionCallback = null;
-                m_IncrementWorkPositionCallback = null;
-                m_MessageCallback = null;
-                m_SolutionCallback = null;
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
-            }
-        }
-
-        #endregion IMiner
+        private Helper.CUDA.Solver.MessageCallback m_messageCallback;
 
         public CUDA(NetworkInterface.INetworkInterface networkInterface, Device[] cudaDevices, bool isSubmitStale, int pauseOnFailedScans)
+            : base(networkInterface, cudaDevices, isSubmitStale, pauseOnFailedScans)
         {
             try
             {
-                Devices = cudaDevices;
-                NetworkInterface = networkInterface;
-                m_pauseOnFailedScan = pauseOnFailedScans;
-                m_failedScanCount = 0;
-
                 var hasNvAPI64 = false;
-                Solver.FoundNvAPI64(ref hasNvAPI64);
+                Helper.CUDA.Solver.FoundNvAPI64(ref hasNvAPI64);
 
-                if (!hasNvAPI64) Program.Print("CUDA [WARN] NvAPI64 library not found.");
-                
+                if (!hasNvAPI64)
+                    PrintMessage("CUDA", -1, "Warn", "NvAPI64 library not found.");
+
                 var foundNvSMI = API.NvSMI.FoundNvSMI();
 
-                if (!foundNvSMI) Program.Print("CUDA [WARN] NvSMI not found.");
+                if (!foundNvSMI)
+                    PrintMessage("CUDA", -1, "Warn", "NvSMI library not found.");
 
                 UseNvSMI = !hasNvAPI64 && foundNvSMI;
 
                 HasMonitoringAPI = hasNvAPI64 | UseNvSMI;
 
-                if (!HasMonitoringAPI) Program.Print("CUDA [WARN] GPU monitoring not available.");
+                if (!HasMonitoringAPI)
+                    PrintMessage("CUDA", -1, "Warn", "GPU monitoring not available.");
 
-                NetworkInterface.OnGetTotalHashrate += NetworkInterface_OnGetTotalHashrate;
-
-                m_instance = Solver.GetInstance();
-                unsafe
-                {
-                    m_GetSolutionTemplateCallback = Solver.SetOnGetSolutionTemplateHandler(m_instance, Work.GetSolutionTemplate);
-                    m_GetKingAddressCallback = Solver.SetOnGetKingAddressHandler(m_instance, Work.GetKingAddress);
-                }
-                m_GetWorkPositionCallback = Solver.SetOnGetWorkPositionHandler(m_instance, Work.GetPosition);
-                m_ResetWorkPositionCallback = Solver.SetOnResetWorkPositionHandler(m_instance, Work.ResetPosition);
-                m_IncrementWorkPositionCallback = Solver.SetOnIncrementWorkPositionHandler(m_instance, Work.IncrementPosition);
-                m_MessageCallback = Solver.SetOnMessageHandler(m_instance, m_instance_OnMessage);
-                m_SolutionCallback = Solver.SetOnSolutionHandler(m_instance, m_instance_OnSolution);
-
-                NetworkInterface.OnGetMiningParameterStatus += NetworkInterface_OnGetMiningParameterStatus;
-                NetworkInterface.OnNewMessagePrefix += NetworkInterface_OnNewMessagePrefix;
-                NetworkInterface.OnNewTarget += NetworkInterface_OnNewTarget;
-                networkInterface.OnStopSolvingCurrentChallenge += NetworkInterface_OnStopSolvingCurrentChallenge;
-
-                Solver.SetSubmitStale(m_instance, isSubmitStale);
+                UnmanagedInstance = Helper.CUDA.Solver.GetInstance();
+                m_messageCallback = Helper.CUDA.Solver.SetOnMessageHandler(UnmanagedInstance, m_instance_OnMessage);
 
                 if (!Program.AllowCUDA || cudaDevices.All(d => !d.AllowDevice))
                 {
-                    Program.Print("[INFO] CUDA device not set.");
+                    PrintMessage("CUDA", -1, "Info", "Device not set.");
                     return;
-                }
-
-                for (int i = 0; i < Devices.Length; i++)
-                    if (Devices[i].AllowDevice)
-                        Solver.AssignDevice(m_instance, Devices[i].DeviceID, ref Devices[i].PciBusID, ref Devices[i].Intensity);
+                }                
+                AssignDevices();
             }
             catch (Exception ex)
             {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
+                PrintMessage("CUDA", -1, "Error", ex.Message);
             }
         }
 
-        private void NetworkInterface_OnGetTotalHashrate(NetworkInterface.INetworkInterface sender, ref ulong totalHashrate)
+        #region IMiner
+
+        public override void Dispose()
         {
-            if (IsPaused) return;
+            var disposeTask = Task.Factory.StartNew(() => base.Dispose());
             try
             {
-                var hashrate = 0ul;
-                Solver.GetTotalHashRate(m_instance, ref hashrate);
+                if (UnmanagedInstance != IntPtr.Zero)
+                    Helper.CUDA.Solver.DisposeInstance(UnmanagedInstance);
 
-                totalHashrate += hashrate;
+                m_messageCallback = null;
             }
             catch (Exception ex)
             {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
+                PrintMessage("CUDA", -1, "Error", ex.Message);
             }
+            disposeTask.Wait();
         }
 
-        private void m_hashPrintTimer_Elapsed(object sender, ElapsedEventArgs e)
+        #endregion IMiner
+
+        #region MinerBase abstracts
+
+        protected override void HashPrintTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var hashrate = 0ul;
             var hashString = new StringBuilder();
-            hashString.Append("CUDA [INFO] Hashrates:");
+            hashString.Append("Hashrates:");
 
             foreach (var device in Devices.Where(d => d.AllowDevice))
-            {
-                if (IsPaused) hashrate = 0ul;
-                else
-                    Solver.GetHashRateByDeviceID(m_instance, (uint)device.DeviceID, ref hashrate);
+                hashString.AppendFormat(" {0} MH/s", GetHashRateByDevice(device) / 1000000.0f);
 
-                hashString.AppendFormat(" {0} MH/s", hashrate / 1000000.0f);
-            }
-            Program.Print(hashString.ToString());
-            
+            PrintMessage("CUDA", -1, "Info", hashString.ToString());
+
             if (HasMonitoringAPI)
             {
                 var coreClock = 0;
@@ -463,164 +91,430 @@ namespace SoliditySHA3Miner.Miner
                 var temperatureString = new StringBuilder();
                 var fanTachometerRpmString = new StringBuilder();
 
-                coreClockString.Append("CUDA [INFO] Core clocks:");
+                coreClockString.Append("Core clocks:");
                 foreach (var device in Devices)
                     if (device.AllowDevice)
                     {
                         if (UseNvSMI)
                             coreClock = API.NvSMI.GetDeviceCurrentCoreClock(device.PciBusID);
                         else
-                            Solver.GetDeviceCurrentCoreClock(m_instance, device.DeviceID, ref coreClock);
+                            Helper.CUDA.Solver.GetDeviceCurrentCoreClock(UnmanagedInstance, device.DeviceID, ref coreClock);
                         coreClockString.AppendFormat(" {0}MHz", coreClock);
                     }
-                Program.Print(coreClockString.ToString());
+                PrintMessage("CUDA", -1, "Info", coreClockString.ToString());
 
-                temperatureString.Append("CUDA [INFO] Temperatures:");
+                temperatureString.Append("Temperatures:");
                 foreach (var device in Devices)
                     if (device.AllowDevice)
                     {
                         if (UseNvSMI)
                             temperature = API.NvSMI.GetDeviceCurrentTemperature(device.PciBusID);
                         else
-                            Solver.GetDeviceCurrentTemperature(m_instance, device.DeviceID, ref temperature);
+                            Helper.CUDA.Solver.GetDeviceCurrentTemperature(UnmanagedInstance, device.DeviceID, ref temperature);
                         temperatureString.AppendFormat(" {0}C", temperature);
                     }
-                Program.Print(temperatureString.ToString());
-                
+                PrintMessage("CUDA", -1, "Info", temperatureString.ToString());
+
                 if (!UseNvSMI)
                 {
-                    fanTachometerRpmString.Append("CUDA [INFO] Fan tachometers:");
+                    fanTachometerRpmString.Append("Fan tachometers:");
                     foreach (var device in Devices)
                         if (device.AllowDevice)
                         {
-                            Solver.GetDeviceCurrentFanTachometerRPM(m_instance, device.DeviceID, ref tachometerRPM);
+                            Helper.CUDA.Solver.GetDeviceCurrentFanTachometerRPM(UnmanagedInstance, device.DeviceID, ref tachometerRPM);
                             fanTachometerRpmString.AppendFormat(" {0}RPM", tachometerRPM);
                         }
-                    Program.Print(fanTachometerRpmString.ToString());
+                    PrintMessage("CUDA", -1, "Info", fanTachometerRpmString.ToString());
                 }
             }
 
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, false);
         }
 
-        private void m_instance_OnMessage(int deviceID, StringBuilder type, StringBuilder message)
+        protected override void AssignDevices()
         {
-            var sFormat = new StringBuilder();
-            if (deviceID > -1) sFormat.Append("CUDA ID: {0} ");
-            else sFormat.Append("CUDA ");
-
-            switch (type.ToString().ToUpperInvariant())
+            foreach (var device in Devices.Where(d => d.AllowDevice))
             {
-                case "INFO":
-                    sFormat.Append(deviceID > -1 ? "[INFO] {1}" : "[INFO] {0}");
-                    break;
+                PrintMessage("CUDA", device.DeviceID, "Info", "Assigning device...");
 
-                case "WARN":
-                    sFormat.Append(deviceID > -1 ? "[WARN] {1}" : "[WARN] {0}");
-                    break;
+                var isKingMaking = !string.IsNullOrWhiteSpace(Work.GetKingAddressString());
 
-                case "ERROR":
-                    sFormat.Append(deviceID > -1 ? "[ERROR] {1}" : "[ERROR] {0}");
-                    break;
+                var deviceName = new StringBuilder(device.Name);
+                int computeMajor = 0, computeMinor = 0;
+                var errorMessage = new StringBuilder(1024);
 
-                case "DEBUG":
-                default:
-#if DEBUG
-                    sFormat.Append(deviceID > -1 ? "[DEBUG] {1}" : "[DEBUG] {0}");
-                    break;
-#else
+                Helper.CUDA.Solver.GetDeviceProperties(UnmanagedInstance,
+                                                       device.DeviceID,
+                                                       ref device.PciBusID,
+                                                       deviceName,
+                                                       ref computeMajor,
+                                                       ref computeMinor,
+                                                       errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
                     return;
-#endif
-            }
-            Program.Print(deviceID > -1
-                ? string.Format(sFormat.ToString(), deviceID, message.ToString())
-                : string.Format(sFormat.ToString(), message.ToString()));
-        }
-
-        private void NetworkInterface_OnStopSolvingCurrentChallenge(NetworkInterface.INetworkInterface sender, string currentTarget)
-        {
-            m_isCurrentChallengeStopSolving = true;
-            Solver.PauseFinding(m_instance, true);
-        }
-
-        private void NetworkInterface_OnNewMessagePrefix(NetworkInterface.INetworkInterface sender, string messagePrefix)
-        {
-            try
-            {
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                {
-                    Solver.UpdatePrefix(m_instance, new StringBuilder(messagePrefix));
-
-                    if (m_isCurrentChallengeStopSolving)
-                    {
-                        Solver.PauseFinding(m_instance, false);
-                        m_isCurrentChallengeStopSolving = false;
-                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
-            }
-        }
 
-        private void NetworkInterface_OnNewTarget(NetworkInterface.INetworkInterface sender, string target)
-        {
-            try
-            {
-                if (m_instance != null && m_instance.ToInt64() != 0)
-                    Solver.UpdateTarget(m_instance, new StringBuilder(target));
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
-            }
-        }
+                var deviceNameString = deviceName.ToString();
+                device.ConputeVersion = (uint)((computeMajor * 100) + (computeMinor * 10));
 
-        private void NetworkInterface_OnGetMiningParameterStatus(NetworkInterface.INetworkInterface sender, bool success, NetworkInterface.MiningParameters miningParameters)
-        {
-            try
-            {
-                if (m_instance != null && m_instance.ToInt64() != 0)
+                if (device.ConputeVersion < 500)
+                    device.Intensity = (device.Intensity < 1.000f) ? Device.DEFAULT_INTENSITY : device.Intensity; // For older GPUs
+                else
                 {
-                    if (success)
+                    float defaultIntensity = Device.DEFAULT_INTENSITY;
+
+                    if (isKingMaking)
                     {
-                        var isPause = false;
-                        Solver.IsPaused(m_instance, ref isPause);
+                        if (new string[] { "2080", "2070", "1080" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 27.54f;
 
-                        if (m_isCurrentChallengeStopSolving) { isPause = true; }
-                        else if (isPause)
-                        {
-                            if (m_failedScanCount > m_pauseOnFailedScan)
-                                m_failedScanCount = 0;
+                        else if (new string[] { "2060", "1070 TI", "1070TI" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 27.46f;
 
-                            isPause = false;
-                        }
-                        Solver.PauseFinding(m_instance, isPause);
+                        else if (new string[] { "2050", "1070", "980" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 27.01f;
+
+                        else if (new string[] { "1060", "970" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 26.01f;
+
+                        else if (new string[] { "1050", "960" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 25.01f;
                     }
                     else
                     {
-                        m_failedScanCount += 1;
+                        if (new string[] { "2080", "2070 TI", "2070TI", "1080 TI", "1080TI" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 27.00f;
 
-                        var isMining = false;
-                        Solver.IsMining(m_instance, ref isMining);
+                        else if (new string[] { "1080", "2070", "1070 TI", "1070TI" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 26.33f;
 
-                        if (m_failedScanCount > m_pauseOnFailedScan && IsMining)
-                            Solver.PauseFinding(m_instance, true);
+                        else if (new string[] { "2060", "1070", "980" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 26.00f;
+
+                        else if (new string[] { "2050", "1060", "970" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 25.50f;
+
+                        else if (new string[] { "1050", "960" }.Any(m => deviceNameString.IndexOf(m) > -1))
+                            defaultIntensity = 25.00f;
                     }
+                    device.Intensity = (device.Intensity < 1.000f) ? defaultIntensity : device.Intensity;
                 }
-            }
-            catch (Exception ex)
-            {
-                Program.Print(string.Format("[ERROR] {0}", ex.Message));
+
+                device.Name = deviceNameString;
+                device.ConputeVersion = (uint)(Math.Abs((computeMajor) * 100) + Math.Abs(computeMinor * 10));
+                device.IsAssigned = true;
+
+                PrintMessage("CUDA", device.DeviceID, "Info", string.Format("Assigned CUDA device ({0})...", deviceName));
+                PrintMessage("CUDA", device.DeviceID, "Info", string.Format("Compute capability: {0}.{1}", computeMajor, computeMinor));
+                PrintMessage("CUDA", device.DeviceID, "Info", string.Format("Intensity: {0}", device.Intensity));
+
+                if (!device.IsInitialized)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Info", "Initializing device...");
+                    errorMessage.Clear();
+
+                    Helper.CUDA.Solver.InitializeDevice(UnmanagedInstance,
+                                                        device.DeviceID,
+                                                        device.PciBusID,
+                                                        Device.MAX_SOLUTION_COUNT,
+                                                        ref device.Pointers.Solutions,
+                                                        ref device.Pointers.SolutionCount,
+                                                        ref device.Pointers.SolutionsDevice,
+                                                        ref device.Pointers.SolutionCountDevice,
+                                                        errorMessage);
+                    if (errorMessage.Length > 0)
+                        PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    else
+                        device.IsInitialized = true;
+                }
             }
         }
 
-        private void m_instance_OnSolution(StringBuilder digest, StringBuilder address, StringBuilder challenge, StringBuilder target, StringBuilder solution)
+        protected override void PushHigh64Target(Device device)
         {
-            var difficulty = NetworkInterface.Difficulty.ToString("X64");
+            var errorMessage = new StringBuilder(1024);
+            Helper.CUDA.Solver.PushHigh64Target(UnmanagedInstance, device.Pointers.High64Target, errorMessage);
 
-            NetworkInterface.SubmitSolution(digest.ToString(), address.ToString(), challenge.ToString(), difficulty, target.ToString(), solution.ToString(), this);
+            if (errorMessage.Length > 0)
+                PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+        }
+
+        protected override void PushTarget(Device device)
+        {
+            var errorMessage = new StringBuilder(1024);
+            Helper.CUDA.Solver.PushTarget(UnmanagedInstance, device.Pointers.Target, errorMessage);
+
+            if (errorMessage.Length > 0)
+                PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+        }
+
+        protected override void PushMidState(Device device)
+        {
+            var errorMessage = new StringBuilder(1024);
+            Helper.CUDA.Solver.PushMidState(UnmanagedInstance, device.Pointers.MidState, errorMessage);
+
+            if (errorMessage.Length > 0)
+                PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+        }
+
+        protected override void PushMessage(Device device)
+        {
+            var errorMessage = new StringBuilder(1024);
+            Helper.CUDA.Solver.PushMessage(UnmanagedInstance, device.Pointers.Message, errorMessage);
+
+            if (errorMessage.Length > 0)
+                PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+        }
+
+        protected async override void StartFinding(Device device)
+        {
+            try
+            {
+                if (!device.IsInitialized) return;
+
+                while (!device.HasNewTarget || !device.HasNewChallenge)
+                    await Task.Delay(500);
+
+                PrintMessage("CUDA", device.DeviceID, "Info", "Start mining...");
+
+                PrintMessage("CUDA", device.DeviceID, "Debug",
+                             string.Format("Threads: {0} Grid size: {1} Block size: {2}",
+                                           device.Threads, device.Grid.X, device.Block.X));
+
+                var grid = device.Grid;
+                var block = device.Block;
+                var maxSolutionCount = Device.MAX_SOLUTION_COUNT;
+                var workPosition = 0ul;
+                var errorMessage = new StringBuilder(1024);
+                var currentChallenge = (byte[])Array.CreateInstance(typeof(byte), UINT256_LENGTH);
+
+                Helper.CUDA.Solver.SetDevice(UnmanagedInstance, device.DeviceID, errorMessage);
+
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    return;
+                }
+
+                // reduce excessive high hashrate reporting
+                device.HashStartTime = DateTime.Now.AddMilliseconds(-500);
+                device.HashCount = 0;
+                device.IsMining = true;
+
+                unsafe
+                {
+                    ulong* solutions = (ulong*)device.Pointers.Solutions.ToPointer();
+                    uint* solutionCount = (uint*)device.Pointers.SolutionCount.ToPointer();
+                    do
+                    {
+                        while (device.IsPause)
+                        {
+                            Task.Delay(500).Wait();
+                            // reduce excessive high hashrate reporting
+                            device.HashStartTime = DateTime.Now.AddMilliseconds(-500);
+                            device.HashCount = 0;
+                        }
+
+                        CheckInputs(device, false, ref currentChallenge);
+
+                        Work.IncrementPosition(ref workPosition, device.Threads);
+                        device.HashCount += device.Threads;
+
+                        Helper.CUDA.Solver.HashMidState(UnmanagedInstance,
+                                                        ref grid,
+                                                        ref block,
+                                                        device.Pointers.SolutionsDevice,
+                                                        device.Pointers.SolutionCountDevice,
+                                                        ref maxSolutionCount,
+                                                        ref workPosition,
+                                                        errorMessage);
+                        if (errorMessage.Length > 0)
+                        {
+                            PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                            device.IsMining = false;
+                        }
+
+                        if (*solutionCount > 0u)
+                        {
+                            var solutionArray = (ulong[])Array.CreateInstance(typeof(ulong), *solutionCount);
+
+                            for (var i = 0; i < *solutionCount; i++)
+                                solutionArray[i] = solutions[i];
+
+                            SubmitSolutions(solutionArray, currentChallenge, "CUDA", device.DeviceID, *solutionCount, false);
+
+                            *solutionCount = 0;
+                        }
+                    } while (device.IsMining);
+                }
+
+                PrintMessage("CUDA", device.DeviceID, "Info", "Stop mining...");
+
+                device.HashCount = 0;
+
+                Helper.CUDA.Solver.FreeObject(UnmanagedInstance, device.DeviceID, device.Pointers.Solutions, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                Helper.CUDA.Solver.FreeObject(UnmanagedInstance, device.DeviceID, device.Pointers.SolutionCount, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                Helper.CUDA.Solver.ResetDevice(UnmanagedInstance, device.DeviceID, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                device.IsInitialized = false;
+            }
+            catch (Exception ex)
+            {
+                PrintMessage("CUDA", -1, "Error", ex.Message);
+            }
+            PrintMessage("CUDA", device.DeviceID, "Info", "Mining stopped.");
+        }
+
+        protected override async void StartFindingKing(Device device)
+        {
+            try
+            {
+                if (!device.IsInitialized) return;
+
+                while (!device.HasNewTarget || !device.HasNewChallenge)
+                    await Task.Delay(500);
+
+                PrintMessage("CUDA", device.DeviceID, "Info", "Start mining...");
+
+                PrintMessage("CUDA", device.DeviceID, "Debug",
+                             string.Format("Threads: {0} Grid size: {1} Block size: {2}",
+                                           device.Threads, device.Grid.X, device.Block.X));
+
+                var grid = device.Grid;
+                var block = device.Block;
+                var maxSolutionCount = Device.MAX_SOLUTION_COUNT;
+                var workPosition = 0ul;
+                var errorMessage = new StringBuilder(1024);
+                var currentChallenge = (byte[])Array.CreateInstance(typeof(byte), UINT256_LENGTH);
+
+                Helper.CUDA.Solver.SetDevice(UnmanagedInstance, device.DeviceID, errorMessage);
+
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    return;
+                }
+
+                // reduce excessive high hashrate reporting
+                device.HashStartTime = DateTime.Now.AddMilliseconds(-500);
+                device.HashCount = 0;
+                device.IsMining = true;
+
+                unsafe
+                {
+                    ulong* solutions = (ulong*)device.Pointers.Solutions.ToPointer();
+                    uint* solutionCount = (uint*)device.Pointers.SolutionCount.ToPointer();
+                    do
+                    {
+                        while (device.IsPause)
+                        {
+                            Task.Delay(500).Wait();
+                            // reduce excessive high hashrate reporting
+                            device.HashStartTime = DateTime.Now.AddMilliseconds(-500);
+                            device.HashCount = 0;
+                        }
+
+                        CheckInputs(device, true, ref currentChallenge);
+
+                        Work.IncrementPosition(ref workPosition, device.Threads);
+                        device.HashCount += device.Threads;
+
+                        Helper.CUDA.Solver.HashMessage(UnmanagedInstance,
+                                                       ref grid,
+                                                       ref block,
+                                                       device.Pointers.SolutionsDevice,
+                                                       device.Pointers.SolutionCountDevice,
+                                                       ref maxSolutionCount,
+                                                       ref workPosition,
+                                                       errorMessage);
+                        if (errorMessage.Length > 0)
+                        {
+                            PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                            device.IsMining = false;
+                        }
+
+                        if (*solutionCount > 0u)
+                        {
+                            var solutionArray = (ulong[])Array.CreateInstance(typeof(ulong), *solutionCount);
+
+                            for (var i = 0; i < *solutionCount; i++)
+                                solutionArray[i] = solutions[i];
+
+                            SubmitSolutions(solutionArray, currentChallenge, "CUDA", device.DeviceID, *solutionCount, true);
+
+                            *solutionCount = 0;
+                        }
+                    } while (device.IsMining);
+                }
+
+                PrintMessage("CUDA", device.DeviceID, "Info", "Stop mining...");
+
+                device.HashCount = 0;
+
+                Helper.CUDA.Solver.FreeObject(UnmanagedInstance, device.DeviceID, device.Pointers.Solutions, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                Helper.CUDA.Solver.FreeObject(UnmanagedInstance, device.DeviceID, device.Pointers.SolutionCount, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                Helper.CUDA.Solver.ResetDevice(UnmanagedInstance, device.DeviceID, errorMessage);
+                if (errorMessage.Length > 0)
+                {
+                    PrintMessage("CUDA", device.DeviceID, "Error", errorMessage.ToString());
+                    errorMessage.Clear();
+                }
+
+                device.IsInitialized = false;
+            }
+            catch (Exception ex)
+            {
+                PrintMessage("CUDA", -1, "Error", ex.Message);
+            }
+            PrintMessage("CUDA", device.DeviceID, "Info", "Mining stopped.");
+        }
+
+        #endregion
+
+        private void m_instance_OnMessage(int deviceID, StringBuilder type, StringBuilder message)
+        {
+            PrintMessage("CUDA", deviceID, type.ToString(), message.ToString());
+        }
+
+        protected override ulong GetHashRateByDevice(Device device)
+        {
+            var hashRate = 0ul;
+
+            if (!IsPause)
+                hashRate = (ulong)(device.HashCount / (DateTime.Now - device.HashStartTime).TotalSeconds);
+
+            return hashRate;
         }
     }
 }

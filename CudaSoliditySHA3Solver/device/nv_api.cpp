@@ -45,7 +45,7 @@ bool NV_API::isInitialized{ false };
 NvPhysicalGpuHandle NV_API::gpuHandles[NVAPI_MAX_PHYSICAL_GPUS];
 NvU32 NV_API::gpuCount{ 0 };
 
-bool NV_API::foundNvAPI64()
+bool NV_API::FoundNvAPI64()
 {
 	return (LoadLibrary(NvAPI64) != NULL);
 }
@@ -95,10 +95,12 @@ void NV_API::unload()
 // Public
 // --------------------------------------------------------------------
 
-void NV_API::assignPciBusID(uint32_t pciBusID)
-{
+NV_API::NV_API(const int deviceID, NvU32 pciBusID) :
+	deviceID{ deviceID },
+	pciBusID{ pciBusID }
+{ 
 	NvU32 tempBusID;
-	deviceBusID = pciBusID;
+	pciBusID = pciBusID;
 	deviceHandle = NULL;
 
 	for (NvU32 h{ 0 }; h < gpuCount; ++h)

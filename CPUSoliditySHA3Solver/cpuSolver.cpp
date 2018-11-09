@@ -1,6 +1,8 @@
 #include "cpuSolver.h"
 #include "sha3.h"
 
+#define ROTL64(x, y) (((x) << (y)) ^ ((x) >> (64u - (y))))
+
 namespace CPUSolver
 {
 	// --------------------------------------------------------------------
@@ -36,6 +38,11 @@ namespace CPUSolver
 		}
 
 		return "0x" + bytesToHexString(b_solutionTemp);
+	}
+
+	void cpuSolver::Keccak256(byte32_t *message, byte32_t *digest)
+	{
+		keccak_256(&(*digest)[0], UINT256_LENGTH, &(*message)[0], MESSAGE_LENGTH);
 	}
 
 	// --------------------------------------------------------------------

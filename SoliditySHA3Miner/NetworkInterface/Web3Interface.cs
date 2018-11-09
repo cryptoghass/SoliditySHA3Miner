@@ -59,7 +59,7 @@ namespace SoliditySHA3Miner.NetworkInterface
         private float m_gasApiMultiplier;
 
         public event GetMiningParameterStatusEvent OnGetMiningParameterStatus;
-        public event NewMessagePrefixEvent OnNewMessagePrefix;
+        public event NewMessagePrefixEvent OnNewChallenge;
         public event NewTargetEvent OnNewTarget;
         public event StopSolvingCurrentChallengeEvent OnStopSolvingCurrentChallenge;
 
@@ -399,8 +399,28 @@ namespace SoliditySHA3Miner.NetworkInterface
 
         public void Dispose()
         {
+            m_submitDateTimeList.Clear();
             m_submittedChallengeList.Clear();
-            m_submittedChallengeList.TrimExcess();
+
+            if (m_updateMinerTimer != null)
+            {
+                m_updateMinerTimer.Elapsed += m_updateMinerTimer_Elapsed;
+                m_updateMinerTimer.Dispose();
+                m_updateMinerTimer = null;
+            }
+
+            if (m_hashPrintTimer != null)
+            {
+                m_hashPrintTimer.Elapsed += m_hashPrintTimer_Elapsed;
+                m_hashPrintTimer.Dispose();
+                m_hashPrintTimer = null;
+            }
+
+            if (m_newChallengeResetEvent != null)
+            {
+                m_newChallengeResetEvent.Dispose();
+                m_newChallengeResetEvent = null;
+            }
         }
 
         public void OverrideMaxTarget(HexBigInteger maxTarget)
@@ -468,7 +488,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                     {
                         using (var ping = new Ping())
                         {
-                            var submitUrl = SubmitURL.Contains("://") ? SubmitURL.Split("://")[1] : SubmitURL;
+                            var submitUrl = SubmitURL.Contains("://") ? SubmitURL.Split(new string[] { "://" }, StringSplitOptions.None)[1] : SubmitURL;
                             try
                             {
                                 var response = ping.Send(submitUrl);
@@ -538,7 +558,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 var miningParameters = GetMiningParameters();
                 if (miningParameters == null)
                 {
-                    OnGetMiningParameterStatus(this, false, null);
+                    OnGetMiningParameterStatus(this, false);
                     return;
                 }
 
@@ -550,7 +570,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 if (m_lastParameters == null || miningParameters.ChallengeNumber.Value != m_lastParameters.ChallengeNumber.Value)
                 {
                     Program.Print(string.Format("[INFO] New challenge detected {0}...", CurrentChallenge));
-                    OnNewMessagePrefix(this, CurrentChallenge + address.Replace("0x", string.Empty));
+                    OnNewChallenge(this, CurrentChallenge + address.Replace("0x", string.Empty));
                     if (m_challengeReceiveDateTime == DateTime.MinValue) m_challengeReceiveDateTime = DateTime.Now;
                     m_newChallengeResetEvent.Set();
                 }
@@ -572,9 +592,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                     if ((ulong)calculatedDifficulty != Difficulty) // Only replace if the integer portion is different
                     {
                         Difficulty = (ulong)calculatedDifficulty;
-
-                        var expValue = BitConverter.GetBytes(decimal.GetBits((decimal)calculatedDifficulty)[3])[2];
-
+                        var expValue = Math.Log10(calculatedDifficulty);
                         var calculatedTarget = m_maxTarget.Value * (ulong)Math.Pow(10, expValue) / (ulong)(calculatedDifficulty * Math.Pow(10, expValue));
 
                         Program.Print(string.Format("[INFO] Update target {0}...", Utils.Numerics.BigIntegerToByte32HexString(calculatedTarget)));
@@ -583,7 +601,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 }
 
                 m_lastParameters = miningParameters;
-                OnGetMiningParameterStatus(this, true, miningParameters);
+                OnGetMiningParameterStatus(this, true);
             }
             catch (Exception ex)
             {
@@ -657,7 +675,7 @@ namespace SoliditySHA3Miner.NetworkInterface
             {
                 if (IsChallengedSubmitted(challenge))
                 {
-                    OnStopSolvingCurrentChallenge(this, challenge);
+                    OnStopSolvingCurrentChallenge(this);
                     Program.Print(string.Format("[INFO] Submission cancelled, nonce has been submitted for the current challenge."));
                     return false;
                 }
@@ -702,7 +720,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                     }
                 }
 
-                var oSolution = new BigInteger(Utils.Numerics.HexStringToByte32Array(solution).ToArray());
+                var oSolution = new BigInteger(Utils.Numerics.HexStringToByte32Array(solution), isBigEndian: true);
                 // Note: do not directly use -> new HexBigInteger(solution).Value
                 //Because two's complement representation always interprets the highest-order bit of the last byte in the array
                 //(the byte at position Array.Length - 1) as the sign bit,

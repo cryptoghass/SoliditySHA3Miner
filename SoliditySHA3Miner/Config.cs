@@ -1,8 +1,10 @@
 using Nethereum.Hex.HexTypes;
+using SoliditySHA3Miner.Miner.Helper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace SoliditySHA3Miner
 {
@@ -132,8 +134,49 @@ namespace SoliditySHA3Miner
 
         private static void PrintCudaDevices()
         {
-            var cudaDevices = Miner.CUDA.GetDevices(out string errorMessage);
-            Console.WriteLine(string.IsNullOrWhiteSpace(errorMessage) ? cudaDevices : errorMessage);
+            var cudaDevices = GetDeviceList(out string errorMessage);
+
+            if (string.IsNullOrWhiteSpace(errorMessage))
+            {
+                var outputString = string.Empty;
+
+                foreach (var device in cudaDevices)
+                {
+                    if (!string.IsNullOrWhiteSpace(outputString)) outputString += Environment.NewLine;
+                    outputString += string.Format("{0}: {1}", device.Item1, device.Item2);
+                }
+                Console.WriteLine(outputString);
+            }
+            else { Console.WriteLine(errorMessage); }
+        }
+
+        private static List<Tuple<int, string>> GetDeviceList(out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            var deviceList = new List<Tuple<int, string>>();
+
+            var errMsg = new StringBuilder(1024);
+            var deviceName = new StringBuilder(256);
+
+            var cudaCount = 0;
+            CUDA.Solver.GetDeviceCount(ref cudaCount, errMsg);
+            errorMessage = errMsg.ToString();
+
+            if (!string.IsNullOrEmpty(errorMessage)) return deviceList;
+
+            for (int i = 0; i < cudaCount; i++)
+            {
+                errMsg.Clear();
+                deviceName.Clear();
+
+                CUDA.Solver.GetDeviceName(i, deviceName, errMsg);
+                errorMessage = errMsg.ToString();
+
+                if (!string.IsNullOrEmpty(errorMessage)) return deviceList;
+
+                deviceList.Add(new Tuple<int, string>(i, deviceName.ToString()));
+            }
+            return deviceList;
         }
 
         private void PrepareCpuDeviceList()
@@ -344,9 +387,12 @@ namespace SoliditySHA3Miner
         {
             if (Program.AllowCUDA)
             {
-                var cudaDeviceCount = Miner.CUDA.GetDeviceCount(out string cudaCountErrorMessage);
+                var errorMessage = new StringBuilder(1024);
 
-                if (!string.IsNullOrWhiteSpace(cudaCountErrorMessage)) Program.Print("CUDA [ERROR] " + cudaCountErrorMessage);
+                var cudaDeviceCount = 0;
+                CUDA.Solver.GetDeviceCount(ref cudaDeviceCount, errorMessage);
+
+                if (errorMessage.Length > 0) Program.Print("CUDA [ERROR] " + errorMessage.ToString());
 
                 if (cudaDeviceCount > 0)
                 {
@@ -358,13 +404,19 @@ namespace SoliditySHA3Miner
                         var userAllowDevice = userDevice?.AllowDevice ?? true;
                         var userPciBusID = userDevice?.PciBusID ?? 0;
 
+                        errorMessage.Clear();
+                        var deviceName = new StringBuilder(256);
+                        CUDA.Solver.GetDeviceName(i, deviceName, errorMessage);
+
+                        if (errorMessage.Length > 0) Program.Print("CUDA [ERROR] " + errorMessage.ToString());
+
                         tempCudaList.Add(new Miner.Device
                         {
                             AllowDevice = true && userAllowDevice,
                             Type = "CUDA",
                             DeviceID = i,
                             PciBusID = userPciBusID,
-                            Name = Miner.CUDA.GetDeviceName(i, out string errorMessage),
+                            Name = deviceName.ToString(),
                             Intensity = userIntensity
                         });
                     }
@@ -459,17 +511,17 @@ namespace SoliditySHA3Miner
                             switch (arg.Split('=')[0])
                             {
                                 case "intelIntensity":
-                                    if (!Program.AllowIntel || arg.EndsWith('=')) break;
+                                    if (!Program.AllowIntel || arg.EndsWith("=")) break;
                                     SetIntelIntensities(arg.Split('=')[1].Split(','));
                                     break;
 
                                 case "amdIntensity":
-                                    if (!Program.AllowAMD || arg.EndsWith('=')) break;
+                                    if (!Program.AllowAMD || arg.EndsWith("=")) break;
                                     SetAmdIntensities(arg.Split('=')[1].Split(','));
                                     break;
 
                                 case "cudaIntensity":
-                                    if (!Program.AllowCUDA || arg.EndsWith('=')) break;
+                                    if (!Program.AllowCUDA || arg.EndsWith("=")) break;
                                     SetCudaIntensities(arg.Split('=')[1].Split(','));
                                     break;
                             }

@@ -2,17 +2,17 @@
 
 namespace SoliditySHA3Miner.NetworkInterface
 {
-    public delegate void GetMiningParameterStatusEvent(INetworkInterface sender, bool success, MiningParameters miningParameters);
+    public delegate void GetMiningParameterStatusEvent(INetworkInterface sender, bool success);
     public delegate void NewMessagePrefixEvent(INetworkInterface sender, string messagePrefix);
     public delegate void NewTargetEvent(INetworkInterface sender, string target);
-    public delegate void StopSolvingCurrentChallengeEvent(INetworkInterface sender, string currentTarget);
+    public delegate void StopSolvingCurrentChallengeEvent(INetworkInterface sender);
 
     public delegate void GetTotalHashrateEvent(INetworkInterface sender, ref ulong totalHashrate);
 
     public interface INetworkInterface : IDisposable
     {
         event GetMiningParameterStatusEvent OnGetMiningParameterStatus;
-        event NewMessagePrefixEvent OnNewMessagePrefix;
+        event NewMessagePrefixEvent OnNewChallenge;
         event NewTargetEvent OnNewTarget;
         event StopSolvingCurrentChallengeEvent OnStopSolvingCurrentChallenge;
 

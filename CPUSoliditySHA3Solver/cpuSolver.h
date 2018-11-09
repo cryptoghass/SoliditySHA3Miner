@@ -59,6 +59,7 @@ namespace CPUSolver
 	public:
 		static uint32_t getLogicalProcessorsCount();
 		static std::string getNewSolutionTemplate(std::string kingAddress = "");
+		static void Keccak256(byte32_t *message, byte32_t *digest);
 
 		cpuSolver(std::string const threads) noexcept;
 		~cpuSolver() noexcept;

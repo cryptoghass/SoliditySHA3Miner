@@ -20,7 +20,8 @@ namespace SoliditySHA3Miner.Miner.API
                 {
                     NvSMI_PATH = @"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe";
                     return true;
-                }}
+                }
+            }
             else
             {
                 var values = Environment.GetEnvironmentVariable("PATH");
@@ -191,7 +192,7 @@ namespace SoliditySHA3Miner.Miner.API
             
             if (string.IsNullOrWhiteSpace(pStateStr)) return -1;
 
-            if (int.TryParse(pStateStr.Skip(1).Take(1).ToArray(), NumberStyles.Number, CultureInfo.InvariantCulture, out int powerState))
+            if (int.TryParse(string.Concat(pStateStr.Skip(1).Take(1)), NumberStyles.Number, CultureInfo.InvariantCulture, out int powerState))
                 return powerState;
             else
                 return -1;

@@ -14,6 +14,11 @@ namespace CPUSolver
 		std::memcpy((void *)solutionTemplate, newTemplateStr, UINT256_LENGTH * 2 + 2);
 	}
 
+	void Keccak256(byte32_t *message, byte32_t *digest)
+	{
+		cpuSolver::Keccak256(message, digest);
+	}
+
 	GetKingAddressCallback SetOnGetKingAddressHandler(cpuSolver *instance, GetKingAddressCallback getKingAddressCallback)
 	{
 		instance->m_getKingAddressCallback = getKingAddressCallback;

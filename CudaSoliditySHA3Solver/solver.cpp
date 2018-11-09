@@ -4,17 +4,17 @@ namespace CUDASolver
 {
 	void FoundNvAPI64(bool *hasNvAPI64)
 	{
-		*hasNvAPI64 = CudaSolver::foundNvAPI64();
+		*hasNvAPI64 = CudaSolver::FoundNvAPI64();
 	}
 
-	void GetDeviceCount(int *deviceCount, const char *errorMessage, uint64_t *errorSize)
+	void GetDeviceCount(int *deviceCount, const char *errorMessage)
 	{
-		CudaSolver::getDeviceCount(deviceCount, errorMessage, errorSize);
+		CudaSolver::GetDeviceCount(deviceCount, errorMessage);
 	}
 
-	void GetDeviceName(int deviceID, const char *deviceName, uint64_t *nameSize, const char *errorMessage, uint64_t *errorSize)
+	void GetDeviceName(int deviceID, const char *deviceName, const char *errorMessage)
 	{
-		CudaSolver::getDeviceName(deviceID, deviceName, nameSize, errorMessage, errorSize);
+		CudaSolver::GetDeviceName(deviceID, deviceName, errorMessage);
 	}
 
 	CudaSolver *GetInstance() noexcept
@@ -33,171 +33,136 @@ namespace CUDASolver
 		catch (...) {}
 	}
 
-	GetKingAddressCallback SetOnGetKingAddressHandler(CudaSolver *instance, GetKingAddressCallback getKingAddressCallback)
-	{
-		instance->m_getKingAddressCallback = getKingAddressCallback;
-		return getKingAddressCallback;
-	}
-
-	GetSolutionTemplateCallback SetOnGetSolutionTemplateHandler(CudaSolver *instance, GetSolutionTemplateCallback getSolutionTemplateCallback)
-	{
-		instance->m_getSolutionTemplateCallback = getSolutionTemplateCallback;
-		return getSolutionTemplateCallback;
-	}
-
-	GetWorkPositionCallback SetOnGetWorkPositionHandler(CudaSolver *instance, GetWorkPositionCallback getWorkPositionCallback)
-	{
-		instance->m_getWorkPositionCallback = getWorkPositionCallback;
-		return getWorkPositionCallback;
-	}
-
-	ResetWorkPositionCallback SetOnResetWorkPositionHandler(CudaSolver *instance, ResetWorkPositionCallback resetWorkPositionCallback)
-	{
-		instance->m_resetWorkPositionCallback = resetWorkPositionCallback;
-		return resetWorkPositionCallback;
-	}
-
-	IncrementWorkPositionCallback SetOnIncrementWorkPositionHandler(CudaSolver *instance, IncrementWorkPositionCallback incrementWorkPositionCallback)
-	{
-		instance->m_incrementWorkPositionCallback = incrementWorkPositionCallback;
-		return incrementWorkPositionCallback;
-	}
-
 	MessageCallback SetOnMessageHandler(CudaSolver *instance, MessageCallback messageCallback)
 	{
 		instance->m_messageCallback = messageCallback;
 		return messageCallback;
 	}
 
-	SolutionCallback SetOnSolutionHandler(CudaSolver *instance, SolutionCallback solutionCallback)
+	void GetDeviceProperties(CudaSolver *instance, int deviceID, uint32_t *pciBusID, const char *deviceName, int *computeMajor, int *computeMinor,
+								const char *errorMessage)
 	{
-		instance->m_solutionCallback = solutionCallback;
-		return solutionCallback;
+		instance->GetDeviceProperties(deviceID, pciBusID, deviceName, computeMajor, computeMinor, errorMessage);
 	}
 
-	void SetSubmitStale(CudaSolver *instance, const bool submitStale)
+	void InitializeDevice(CudaSolver *instance, int deviceID, uint32_t pciBusID, uint32_t maxSolutionCount,
+							uint64_t **solutions, uint32_t **solutionCount, uint64_t **solutionsDevice, uint32_t **solutionCountDevice,
+							const char *errorMessage)
 	{
-		instance->isSubmitStale = submitStale;
+		instance->InitializeDevice(deviceID, pciBusID, maxSolutionCount, solutions, solutionCount, solutionsDevice, solutionCountDevice, errorMessage);
 	}
 
-	void AssignDevice(CudaSolver *instance, const int deviceID, unsigned int *pciBusID, float *intensity)
+	void SetDevice(CudaSolver *instance, int deviceID, const char *errorMessage)
 	{
-		instance->assignDevice(deviceID, *pciBusID, *intensity);
+		instance->SetDevice(deviceID, errorMessage);
 	}
 
-	void IsAssigned(CudaSolver *instance, bool *isAssigned)
+	void ResetDevice(CudaSolver *instance, int deviceID, const char *errorMessage)
 	{
-		*isAssigned = instance->isAssigned();
+		instance->ResetDevice(deviceID, errorMessage);
 	}
 
-	void IsAnyInitialised(CudaSolver *instance, bool *isAnyInitialised)
+	void FreeObject(CudaSolver *instance, int deviceID, void *object, const char *errorMessage)
 	{
-		*isAnyInitialised = instance->isAnyInitialised();
+		instance->FreeObject(deviceID, object, errorMessage);
 	}
 
-	void IsMining(CudaSolver *instance, bool *isMining)
+	void PushHigh64Target(CudaSolver *instance, uint64_t *high64Target, const char *errorMessage)
 	{
-		*isMining = instance->isMining();
+		instance->PushHigh64Target(high64Target, errorMessage);
 	}
 
-	void IsPaused(CudaSolver *instance, bool *isPaused)
+	void PushMidState(CudaSolver *instance, sponge_ut *midState, const char *errorMessage)
 	{
-		*isPaused = instance->isPaused();
+		instance->PushMidState(midState, errorMessage);
 	}
 
-	void GetHashRateByDeviceID(CudaSolver *instance, const uint32_t deviceID, uint64_t *hashRate)
+	void PushTarget(CudaSolver *instance, byte32_t *target, const char *errorMessage)
 	{
-		*hashRate = instance->getHashRateByDeviceID(deviceID);
+		instance->PushTarget(target, errorMessage);
 	}
 
-	void GetTotalHashRate(CudaSolver *instance, uint64_t *totalHashRate)
+	void PushMessage(CudaSolver *instance, message_ut *message, const char *errorMessage)
 	{
-		*totalHashRate = instance->getTotalHashRate();
+		instance->PushMessage(message, errorMessage);
 	}
 
-	void UpdatePrefix(CudaSolver *instance, const char *prefix)
+	void HashMidState(CudaSolver *instance, dim3 *grid, dim3 *block,
+						uint64_t *solutionsDevice, uint32_t *solutionCountDevice,
+						uint32_t *maxSolutionCount, uint64_t *workPosition, const char *errorMessage)
 	{
-		instance->updatePrefix(prefix);
+		instance->HashMidState(grid, block,
+								solutionsDevice, solutionCountDevice,
+								maxSolutionCount, workPosition, errorMessage);
 	}
 
-	void UpdateTarget(CudaSolver *instance, const char *target)
+	void HashMessage(CudaSolver *instance, dim3 *grid, dim3 *block,
+		uint64_t *solutionsDevice, uint32_t *solutionCountDevice,
+		uint32_t *maxSolutionCount, uint64_t *workPosition, const char *errorMessage)
 	{
-		instance->updateTarget(target);
+		instance->HashMessage(grid, block,
+								solutionsDevice, solutionCountDevice,
+								maxSolutionCount, workPosition, errorMessage);
 	}
 
-	void PauseFinding(CudaSolver *instance, const bool pause)
+	void GetDeviceSettingMaxCoreClock(CudaSolver *instance, int deviceID, int *coreClock)
 	{
-		instance->pauseFinding(pause);
+		*coreClock = instance->GetDeviceSettingMaxCoreClock(deviceID);
 	}
 
-	void StartFinding(CudaSolver *instance)
+	void GetDeviceSettingMaxMemoryClock(CudaSolver *instance, int deviceID, int *memoryClock)
 	{
-		instance->startFinding();
+		*memoryClock = instance->GetDeviceSettingMaxMemoryClock(deviceID);
 	}
 
-	void StopFinding(CudaSolver *instance)
+	void GetDeviceSettingPowerLimit(CudaSolver *instance, int deviceID, int *powerLimit)
 	{
-		instance->stopFinding();
+		*powerLimit = instance->GetDeviceSettingPowerLimit(deviceID);
 	}
 
-	void GetDeviceSettingMaxCoreClock(CudaSolver *instance, const int deviceID, int *coreClock)
+	void GetDeviceSettingThermalLimit(CudaSolver *instance, int deviceID, int *thermalLimit)
 	{
-		*coreClock = instance->getDeviceSettingMaxCoreClock(deviceID);
+		*thermalLimit = instance->GetDeviceSettingThermalLimit(deviceID);
 	}
 
-	void GetDeviceSettingMaxMemoryClock(CudaSolver *instance, const int deviceID, int *memoryClock)
+	void GetDeviceSettingFanLevelPercent(CudaSolver *instance, int deviceID, int *fanLevel)
 	{
-		*memoryClock = instance->getDeviceSettingMaxMemoryClock(deviceID);
+		*fanLevel = instance->GetDeviceSettingFanLevelPercent(deviceID);
 	}
 
-	void GetDeviceSettingPowerLimit(CudaSolver *instance, const int deviceID, int *powerLimit)
+	void GetDeviceCurrentFanTachometerRPM(CudaSolver *instance, int deviceID, int *tachometerRPM)
 	{
-		*powerLimit = instance->getDeviceSettingPowerLimit(deviceID);
+		*tachometerRPM = instance->GetDeviceCurrentFanTachometerRPM(deviceID);
 	}
 
-	void GetDeviceSettingThermalLimit(CudaSolver *instance, const int deviceID, int *thermalLimit)
+	void GetDeviceCurrentTemperature(CudaSolver *instance, int deviceID, int *temperature)
 	{
-		*thermalLimit = instance->getDeviceSettingThermalLimit(deviceID);
+		*temperature = instance->GetDeviceCurrentTemperature(deviceID);
 	}
 
-	void GetDeviceSettingFanLevelPercent(CudaSolver *instance, const int deviceID, int *fanLevel)
+	void GetDeviceCurrentCoreClock(CudaSolver *instance, int deviceID, int *coreClock)
 	{
-		*fanLevel = instance->getDeviceSettingFanLevelPercent(deviceID);
+		*coreClock = instance->GetDeviceCurrentCoreClock(deviceID);
 	}
 
-	void GetDeviceCurrentFanTachometerRPM(CudaSolver *instance, const int deviceID, int *tachometerRPM)
+	void GetDeviceCurrentMemoryClock(CudaSolver *instance, int deviceID, int *memoryClock)
 	{
-		*tachometerRPM = instance->getDeviceCurrentFanTachometerRPM(deviceID);
+		*memoryClock = instance->GetDeviceCurrentMemoryClock(deviceID);
 	}
 
-	void GetDeviceCurrentTemperature(CudaSolver *instance, const int deviceID, int *temperature)
+	void GetDeviceCurrentUtilizationPercent(CudaSolver *instance, int deviceID, int *utiliztion)
 	{
-		*temperature = instance->getDeviceCurrentTemperature(deviceID);
+		*utiliztion = instance->GetDeviceCurrentUtilizationPercent(deviceID);
 	}
 
-	void GetDeviceCurrentCoreClock(CudaSolver *instance, const int deviceID, int *coreClock)
+	void GetDeviceCurrentPstate(CudaSolver *instance, int deviceID, int *pState)
 	{
-		*coreClock = instance->getDeviceCurrentCoreClock(deviceID);
+		*pState = instance->GetDeviceCurrentPstate(deviceID);
 	}
 
-	void GetDeviceCurrentMemoryClock(CudaSolver *instance, const int deviceID, int *memoryClock)
+	void GetDeviceCurrentThrottleReasons(CudaSolver *instance, int deviceID, const char *throttleReasons, uint64_t *reasonSize)
 	{
-		*memoryClock = instance->getDeviceCurrentMemoryClock(deviceID);
-	}
-
-	void GetDeviceCurrentUtilizationPercent(CudaSolver *instance, const int deviceID, int *utiliztion)
-	{
-		*utiliztion = instance->getDeviceCurrentUtilizationPercent(deviceID);
-	}
-
-	void GetDeviceCurrentPstate(CudaSolver *instance, const int deviceID, int *pState)
-	{
-		*pState = instance->getDeviceCurrentPstate(deviceID);
-	}
-
-	void GetDeviceCurrentThrottleReasons(CudaSolver *instance, const int deviceID, const char *throttleReasons, uint64_t *reasonSize)
-	{
-		auto reasons = instance->getDeviceCurrentThrottleReasons(deviceID);
+		auto reasons = instance->GetDeviceCurrentThrottleReasons(deviceID);
 		const char *reasonStr = reasons.c_str();
 		std::memcpy((void *)throttleReasons, reasonStr, reasons.length());
 		std::memset((void *)&throttleReasons[reasons.length()], '\0', 1ull);

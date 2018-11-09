@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SoliditySHA3Miner.Miner.Helper;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -329,7 +330,7 @@ namespace SoliditySHA3Miner.API
         {
             try
             {
-                var instancePtr = miner.m_instance;
+                var instancePtr = miner.UnmanagedInstance;
 
                 cudaMiner = new JsonAPI.CUDA_Miner()
                 {
@@ -374,40 +375,40 @@ namespace SoliditySHA3Miner.API
                     var tempSize = 0ul;
                     var tempStr = new StringBuilder(1024);
 
-                    Miner.CUDA.Solver.GetDeviceSettingMaxCoreClock(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceSettingMaxCoreClock(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.SettingMaxCoreClockMHz = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceSettingMaxMemoryClock(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceSettingMaxMemoryClock(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.SettingMaxMemoryClockMHz = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceSettingPowerLimit(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceSettingPowerLimit(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.SettingPowerLimitPercent = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceSettingThermalLimit(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceSettingThermalLimit(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.SettingThermalLimitC = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceSettingFanLevelPercent(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceSettingFanLevelPercent(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.SettingFanLevelPercent = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentFanTachometerRPM(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentFanTachometerRPM(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentFanTachometerRPM = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentTemperature(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentTemperature(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentTemperatureC = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentCoreClock(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentCoreClock(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentCoreClockMHz = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentMemoryClock(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentMemoryClock(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentMemoryClockMHz = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentUtilizationPercent(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentUtilizationPercent(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentUtilizationPercent = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentPstate(instancePtr, device.DeviceID, ref tempValue);
+                    CUDA.Solver.GetDeviceCurrentPstate(instancePtr, device.DeviceID, ref tempValue);
                     cudaMiner.CurrentPState = tempValue;
 
-                    Miner.CUDA.Solver.GetDeviceCurrentThrottleReasons(instancePtr, device.DeviceID, tempStr, ref tempSize);
+                    CUDA.Solver.GetDeviceCurrentThrottleReasons(instancePtr, device.DeviceID, tempStr, ref tempSize);
                     cudaMiner.CurrentThrottleReasons = tempStr.ToString();
                 }
             }

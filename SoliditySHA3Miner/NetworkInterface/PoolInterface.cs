@@ -31,7 +31,7 @@ namespace SoliditySHA3Miner.NetworkInterface
         private MiningParameters m_lastParameters;
 
         public event GetMiningParameterStatusEvent OnGetMiningParameterStatus;
-        public event NewMessagePrefixEvent OnNewMessagePrefix;
+        public event NewMessagePrefixEvent OnNewChallenge;
         public event NewTargetEvent OnNewTarget;
         public event StopSolvingCurrentChallengeEvent OnStopSolvingCurrentChallenge;
 
@@ -96,6 +96,22 @@ namespace SoliditySHA3Miner.NetworkInterface
         public void Dispose()
         {
             if (SecondaryPool != null) SecondaryPool.Dispose();
+
+            m_submitDateTimeList.Clear();
+
+            if (m_updateMinerTimer != null)
+            {
+                m_updateMinerTimer.Elapsed += m_updateMinerTimer_Elapsed;
+                m_updateMinerTimer.Dispose();
+                m_updateMinerTimer = null;
+            }
+
+            if (m_hashPrintTimer != null)
+            {
+                m_hashPrintTimer.Elapsed += m_hashPrintTimer_Elapsed;
+                m_hashPrintTimer.Dispose();
+                m_hashPrintTimer = null;
+            }
         }
 
         private JObject GetPoolParameter(string method, params string[] parameters)
@@ -160,7 +176,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                     {
                         using (var ping = new Ping())
                         {
-                            var poolURL = s_PoolURL.Contains("://") ? s_PoolURL.Split("://")[1] : s_PoolURL;
+                            var poolURL = s_PoolURL.Contains("://") ? s_PoolURL.Split(new string[] { "://" }, StringSplitOptions.None)[1] : s_PoolURL;
                             try
                             {
                                 var response = ping.Send(poolURL);
@@ -241,7 +257,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 var miningParameters = GetMiningParameters();
                 if (miningParameters == null)
                 {
-                    OnGetMiningParameterStatus(this, false, null);
+                    OnGetMiningParameterStatus(this, false);
                     return;
                 }
 
@@ -252,7 +268,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 if (m_lastParameters == null || miningParameters.ChallengeNumber.Value != m_lastParameters.ChallengeNumber.Value)
                 {
                     Program.Print(string.Format("[INFO] New challenge detected {0}...", CurrentChallenge));
-                    OnNewMessagePrefix(this, CurrentChallenge + address.Replace("0x", string.Empty));
+                    OnNewChallenge(this, CurrentChallenge + address.Replace("0x", string.Empty));
                     if (m_challengeReceiveDateTime == DateTime.MinValue) m_challengeReceiveDateTime = DateTime.Now;
                 }
 
@@ -290,7 +306,7 @@ namespace SoliditySHA3Miner.NetworkInterface
                 }
 
                 m_lastParameters = miningParameters;
-                OnGetMiningParameterStatus(this, true, miningParameters);
+                OnGetMiningParameterStatus(this, true);
             }
             catch (Exception ex)
             {
