@@ -25,12 +25,9 @@ namespace CUDASolver
 
 	void DisposeInstance(CudaSolver *instance) noexcept
 	{
-		try
-		{
-			instance->~CudaSolver();
-			free(instance);
-		}
+		try { instance->~CudaSolver(); }
 		catch (...) {}
+		free(instance);
 	}
 
 	MessageCallback SetOnMessageHandler(CudaSolver *instance, MessageCallback messageCallback)
